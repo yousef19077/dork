@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import telebot
 import random
 import json
+import time
 
 # إعداد البوت
 BOT_TOKEN = "7303620071:AAFI15Tkv-1pWRkPSLo1K_d7BXK2rMXSPwo"  # استبدل بالتوكن الخاص بك
@@ -28,32 +29,39 @@ def save_blacklist():
         json.dump(list(blacklist), f)
 
 # دالة البحث باستخدام Google Dork
-def google_dork_search(dork_query, num_results=10, max_pages=3):
+def google_dork_search(dork_query, num_results=5, max_pages=2):
     headers = {"User-Agent": random.choice(user_agents)}
     results = set()
-    
+
     for page in range(max_pages):
         start = page * num_results
         search_url = f"https://www.google.com/search?q={dork_query}&num={num_results}&start={start}"
-        response = requests.get(search_url, headers=headers)
         
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            for g in soup.find_all('div', class_='tF2Cxc'):
-                title = g.find('h3').text
-                link = g.find('a')['href']
+        try:
+            response = requests.get(search_url, headers=headers)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                for g in soup.find_all('div', class_='tF2Cxc'):
+                    title = g.find('h3').text
+                    link = g.find('a')['href']
+                    if link not in blacklist:
+                        blacklist.add(link)
+                        save_blacklist()
+                        results.add(f"{title} - {link}")
+            elif response.status_code == 429:
+                time.sleep(30)  # الانتظار قبل إعادة المحاولة
+                continue
+            else:
+                return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
+        except Exception as e:
+            return [f"حدث خطأ أثناء البحث: {str(e)}"]
 
-                if link not in blacklist:
-                    blacklist.add(link)
-                    save_blacklist()
-                    results.add(f"{title} - {link}")
-        else:
-            return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
+        time.sleep(5)  # الانتظار بين الطلبات
 
     return list(results)
 
 # رابط الفيديو من قناة التليجرام
-VIDEO_URL = "https://t.me/reeetere/15"  # استبدل برابط الفيديو الخاص بك
+VIDEO_URL = "https://t.me/fi_9b/336"  # استبدل برابط الفيديو الخاص بك
 
 # أزرار اختيار نوع المنتج
 @bot.message_handler(commands=['start', 'product'])
@@ -77,10 +85,7 @@ def select_product(call):
     product = call.data.split(":")[1]
     
     # إزالة الأزرار السابقة
-    try:
-        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    except Exception as e:
-        print(f"Error removing buttons: {e}")
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     
     bot.send_message(call.message.chat.id, f"تم اختيار المنتج: {product}\nالرجاء اختيار بوابة الدفع:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
@@ -99,10 +104,7 @@ def select_gateway(call):
     _, product, gateway = call.data.split(":")
     
     # إزالة الأزرار السابقة
-    try:
-        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    except Exception as e:
-        print(f"Error removing buttons: {e}")
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     
     bot.send_message(call.message.chat.id, f"تم اختيار بوابة الدفع: {gateway}\nالرجاء اختيار نوع العملة:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
@@ -117,10 +119,7 @@ def select_currency(call):
     _, product, gateway, currency = call.data.split(":")
     
     # إزالة الأزرار السابقة
-    try:
-        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    except Exception as e:
-        print(f"Error removing buttons: {e}")
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     
     bot.send_message(call.message.chat.id, f"تم اختيار العملة: {currency}\nالرجاء إدخال السعر:")
     bot.register_next_step_handler(call.message, process_price, product, gateway, currency)
@@ -138,6 +137,7 @@ def process_price(message, product, gateway, currency):
                 bot.send_message(message.chat.id, result)
         else:
             bot.send_message(message.chat.id, "لم يتم العثور على نتائج.")
+        bot.send_message(message.chat.id, "تم البحث بنجاح.")
     except ValueError:
         bot.send_message(message.chat.id, "الرجاء إدخال مبلغ صالح. مثال: 100.50")
         bot.register_next_step_handler(message, process_price, product, gateway, currency)
