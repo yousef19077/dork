@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import telebot
 import random
 import json
-import time
 
 # إعداد البوت
 BOT_TOKEN = "7303620071:AAFI15Tkv-1pWRkPSLo1K_d7BXK2rMXSPwo"  # استبدل بالتوكن الخاص بك
@@ -32,40 +31,38 @@ def save_blacklist():
 def google_dork_search(dork_query, num_results=10, max_pages=3):
     headers = {"User-Agent": random.choice(user_agents)}
     results = set()
-    proxies = None  # أضف بروكسي هنا إذا توفر لديك
-
+    
     for page in range(max_pages):
         start = page * num_results
         search_url = f"https://www.google.com/search?q={dork_query}&num={num_results}&start={start}"
+        response = requests.get(search_url, headers=headers)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            for g in soup.find_all('div', class_='tF2Cxc'):
+                title = g.find('h3').text
+                link = g.find('a')['href']
 
-        try:
-            response = requests.get(search_url, headers=headers, proxies=proxies, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                for g in soup.find_all('div', class_='tF2Cxc'):
-                    title = g.find('h3').text
-                    link = g.find('a')['href']
-
-                    if link not in blacklist:
-                        blacklist.add(link)
-                        save_blacklist()
-                        results.add(f"{title} - {link}")
-            elif response.status_code == 429:
-                bot.send_message(chat_id, "تم تجاوز عدد الطلبات المسموح بها. سيتم الانتظار قليلًا...")
-                time.sleep(random.uniform(10, 30))  # انتظار عشوائي بين 10-30 ثانية
-        except requests.RequestException as e:
-            bot.send_message(chat_id, f"خطأ في الاتصال: {e}")
-            time.sleep(random.uniform(10, 30))  # انتظار عشوائي
+                if link not in blacklist:
+                    blacklist.add(link)
+                    save_blacklist()
+                    results.add(f"{title} - {link}")
+        else:
+            return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
 
     return list(results)
 
 # أزرار اختيار نوع المنتج
 @bot.message_handler(commands=['start', 'product'])
 def product_menu(message):
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-    products = ["Electronics", "Clothing", "Books", "Toys", "Furniture", "Groceries"]
-    for product in products:
-        markup.add(telebot.types.InlineKeyboardButton(product, callback_data=f"product:{product}"))
+    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
+    products = [
+        "Electronics", "Clothing", "Books", "Toys", "Furniture", 
+        "Groceries", "Health", "Beauty", "Sports", "Automotive"
+    ]
+    buttons = [telebot.types.InlineKeyboardButton(product, callback_data=f"product:{product}") for product in products]
+    markup.add(*buttons)
+    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data="back"))
     bot.send_message(message.chat.id, "اختر نوع المنتج:", reply_markup=markup)
 
 # معالجة اختيار المنتج
@@ -73,14 +70,15 @@ def product_menu(message):
 def select_product(call):
     product = call.data.split(":")[1]
     bot.send_message(call.message.chat.id, f"تم اختيار المنتج: {product}\nالرجاء اختيار بوابة الدفع:")
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     gateways = [
         "PayPal", "Stripe", "Braintree", "Square", "Authorize.Net", 
         "2Checkout", "Adyen", "Amazon Pay", "Google Pay", "Apple Pay", 
         "Klarna", "Skrill", "WePay", "Worldpay", "BlueSnap"
     ]
-    for gateway in gateways:
-        markup.add(telebot.types.InlineKeyboardButton(gateway, callback_data=f"gateway:{product}:{gateway}"))
+    buttons = [telebot.types.InlineKeyboardButton(gateway, callback_data=f"gateway:{product}:{gateway}") for gateway in gateways]
+    markup.add(*buttons)
+    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data="product_menu"))
     bot.send_message(call.message.chat.id, "اختر بوابة الدفع:", reply_markup=markup)
 
 # معالجة اختيار بوابة الدفع
@@ -88,10 +86,11 @@ def select_product(call):
 def select_gateway(call):
     _, product, gateway = call.data.split(":")
     bot.send_message(call.message.chat.id, f"تم اختيار بوابة الدفع: {gateway}\nالرجاء اختيار نوع العملة:")
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     currencies = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CNY", "INR"]
-    for currency in currencies:
-        markup.add(telebot.types.InlineKeyboardButton(currency, callback_data=f"currency:{product}:{gateway}:{currency}"))
+    buttons = [telebot.types.InlineKeyboardButton(currency, callback_data=f"currency:{product}:{gateway}:{currency}") for currency in currencies]
+    markup.add(*buttons)
+    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data=f"product:{product}"))
     bot.send_message(call.message.chat.id, "اختر العملة:", reply_markup=markup)
 
 # معالجة اختيار العملة
@@ -117,6 +116,11 @@ def process_price(message, product, gateway, currency):
     except ValueError:
         bot.send_message(message.chat.id, "الرجاء إدخال مبلغ صالح. مثال: 100.50")
         bot.register_next_step_handler(message, process_price, product, gateway, currency)
+
+# معالجة الرجوع
+@bot.callback_query_handler(func=lambda call: call.data == "back")
+def go_back(call):
+    product_menu(call.message)
 
 # تشغيل البوت
 print("Bot is running...")
