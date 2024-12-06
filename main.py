@@ -77,7 +77,10 @@ def select_product(call):
     product = call.data.split(":")[1]
     
     # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception as e:
+        print(f"Error removing buttons: {e}")
     
     bot.send_message(call.message.chat.id, f"تم اختيار المنتج: {product}\nالرجاء اختيار بوابة الدفع:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
@@ -96,7 +99,10 @@ def select_gateway(call):
     _, product, gateway = call.data.split(":")
     
     # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception as e:
+        print(f"Error removing buttons: {e}")
     
     bot.send_message(call.message.chat.id, f"تم اختيار بوابة الدفع: {gateway}\nالرجاء اختيار نوع العملة:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
@@ -111,7 +117,10 @@ def select_currency(call):
     _, product, gateway, currency = call.data.split(":")
     
     # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception as e:
+        print(f"Error removing buttons: {e}")
     
     bot.send_message(call.message.chat.id, f"تم اختيار العملة: {currency}\nالرجاء إدخال السعر:")
     bot.register_next_step_handler(call.message, process_price, product, gateway, currency)
@@ -129,8 +138,6 @@ def process_price(message, product, gateway, currency):
                 bot.send_message(message.chat.id, result)
         else:
             bot.send_message(message.chat.id, "لم يتم العثور على نتائج.")
-        # إخفاء الفيديو والأزرار بعد البحث
-        bot.edit_message_text("تم البحث بنجاح. النتائج تظهر الآن.", chat_id=message.chat.id, message_id=message.message_id)
     except ValueError:
         bot.send_message(message.chat.id, "الرجاء إدخال مبلغ صالح. مثال: 100.50")
         bot.register_next_step_handler(message, process_price, product, gateway, currency)
