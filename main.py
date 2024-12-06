@@ -52,9 +52,15 @@ def google_dork_search(dork_query, num_results=10, max_pages=3):
 
     return list(results)
 
+# رابط الفيديو من قناة التليجرام
+VIDEO_URL = "https://t.me/reeetere/15"  # استبدل برابط الفيديو الخاص بك
+
 # أزرار اختيار نوع المنتج
 @bot.message_handler(commands=['start', 'product'])
 def product_menu(message):
+    # إرسال الفيديو أولاً فقط في البداية
+    bot.send_video(message.chat.id, VIDEO_URL)
+    
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     products = [
         "Electronics", "Clothing", "Books", "Toys", "Furniture", 
@@ -62,13 +68,16 @@ def product_menu(message):
     ]
     buttons = [telebot.types.InlineKeyboardButton(product, callback_data=f"product:{product}") for product in products]
     markup.add(*buttons)
-    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data="back"))
     bot.send_message(message.chat.id, "اختر نوع المنتج:", reply_markup=markup)
 
 # معالجة اختيار المنتج
 @bot.callback_query_handler(func=lambda call: call.data.startswith("product:"))
 def select_product(call):
     product = call.data.split(":")[1]
+    
+    # إزالة الأزرار السابقة
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    
     bot.send_message(call.message.chat.id, f"تم اختيار المنتج: {product}\nالرجاء اختيار بوابة الدفع:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     gateways = [
@@ -78,25 +87,31 @@ def select_product(call):
     ]
     buttons = [telebot.types.InlineKeyboardButton(gateway, callback_data=f"gateway:{product}:{gateway}") for gateway in gateways]
     markup.add(*buttons)
-    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data="product_menu"))
     bot.send_message(call.message.chat.id, "اختر بوابة الدفع:", reply_markup=markup)
 
 # معالجة اختيار بوابة الدفع
 @bot.callback_query_handler(func=lambda call: call.data.startswith("gateway:"))
 def select_gateway(call):
     _, product, gateway = call.data.split(":")
+    
+    # إزالة الأزرار السابقة
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    
     bot.send_message(call.message.chat.id, f"تم اختيار بوابة الدفع: {gateway}\nالرجاء اختيار نوع العملة:")
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     currencies = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CNY", "INR"]
     buttons = [telebot.types.InlineKeyboardButton(currency, callback_data=f"currency:{product}:{gateway}:{currency}") for currency in currencies]
     markup.add(*buttons)
-    markup.add(telebot.types.InlineKeyboardButton("رجوع", callback_data=f"product:{product}"))
     bot.send_message(call.message.chat.id, "اختر العملة:", reply_markup=markup)
 
 # معالجة اختيار العملة
 @bot.callback_query_handler(func=lambda call: call.data.startswith("currency:"))
 def select_currency(call):
     _, product, gateway, currency = call.data.split(":")
+    
+    # إزالة الأزرار السابقة
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    
     bot.send_message(call.message.chat.id, f"تم اختيار العملة: {currency}\nالرجاء إدخال السعر:")
     bot.register_next_step_handler(call.message, process_price, product, gateway, currency)
 
@@ -113,14 +128,11 @@ def process_price(message, product, gateway, currency):
                 bot.send_message(message.chat.id, result)
         else:
             bot.send_message(message.chat.id, "لم يتم العثور على نتائج.")
+        # إخفاء الفيديو والأزرار بعد البحث
+        bot.edit_message_text("تم البحث بنجاح. النتائج تظهر الآن.", chat_id=message.chat.id, message_id=message.message_id)
     except ValueError:
         bot.send_message(message.chat.id, "الرجاء إدخال مبلغ صالح. مثال: 100.50")
         bot.register_next_step_handler(message, process_price, product, gateway, currency)
-
-# معالجة الرجوع
-@bot.callback_query_handler(func=lambda call: call.data == "back")
-def go_back(call):
-    product_menu(call.message)
 
 # تشغيل البوت
 print("Bot is running...")
