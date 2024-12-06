@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import telebot
 import random
 import json
+import time
 
 # إعداد البوت
 BOT_TOKEN = "7303620071:AAFI15Tkv-1pWRkPSLo1K_d7BXK2rMXSPwo"  # استبدل بالتوكن الخاص بك
@@ -31,24 +32,30 @@ def save_blacklist():
 def google_dork_search(dork_query, num_results=10, max_pages=3):
     headers = {"User-Agent": random.choice(user_agents)}
     results = set()
-    
+    proxies = None  # أضف بروكسي هنا إذا توفر لديك
+
     for page in range(max_pages):
         start = page * num_results
         search_url = f"https://www.google.com/search?q={dork_query}&num={num_results}&start={start}"
-        response = requests.get(search_url, headers=headers)
-        
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            for g in soup.find_all('div', class_='tF2Cxc'):
-                title = g.find('h3').text
-                link = g.find('a')['href']
 
-                if link not in blacklist:
-                    blacklist.add(link)
-                    save_blacklist()
-                    results.add(f"{title} - {link}")
-        else:
-            return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
+        try:
+            response = requests.get(search_url, headers=headers, proxies=proxies, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                for g in soup.find_all('div', class_='tF2Cxc'):
+                    title = g.find('h3').text
+                    link = g.find('a')['href']
+
+                    if link not in blacklist:
+                        blacklist.add(link)
+                        save_blacklist()
+                        results.add(f"{title} - {link}")
+            elif response.status_code == 429:
+                bot.send_message(chat_id, "تم تجاوز عدد الطلبات المسموح بها. سيتم الانتظار قليلًا...")
+                time.sleep(random.uniform(10, 30))  # انتظار عشوائي بين 10-30 ثانية
+        except requests.RequestException as e:
+            bot.send_message(chat_id, f"خطأ في الاتصال: {e}")
+            time.sleep(random.uniform(10, 30))  # انتظار عشوائي
 
     return list(results)
 
