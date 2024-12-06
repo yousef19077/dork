@@ -61,6 +61,9 @@ def product_menu(message):
     # إرسال الفيديو أولاً فقط في البداية
     bot.send_video(message.chat.id, VIDEO_URL)
     
+    # إرسال الرسالة "اختر من فوق" فورًا بعد الفيديو
+    bot.send_message(message.chat.id, "اختر من فوق:")
+    
     markup = telebot.types.InlineKeyboardMarkup(row_width=3)
     products = [
         "Electronics", "Clothing", "Books", "Toys", "Furniture", 
