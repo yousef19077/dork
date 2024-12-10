@@ -16,6 +16,29 @@ user_agents = [
     "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:35.0) Gecko/20100101 Firefox/35.0"
 ]
 
+# قائمة البروكسيات
+proxies = [
+    "104.167.27.85:3128",
+    "156.228.81.35:3128",
+    "156.240.99.34:3128",
+    "104.207.32.32:3128",
+    "156.233.87.19:3128",
+    "156.228.174.146:3128",
+    "104.207.52.183:3128",
+    "104.207.35.176:3128",
+    "156.228.105.144:3128",
+    "104.207.50.156:3128",
+    "156.228.182.209:3128",
+    "156.253.176.100:3128",
+    "104.207.58.29:3128",
+    "154.94.12.229:3128",
+    "104.167.31.238:3128",
+    "156.228.88.168:3128",
+    "104.207.56.158:3128",
+    "156.228.102.72:3128",
+    "156.228.98.144:3128"
+]
+
 # تحميل أو إنشاء القائمة السوداء
 BLACKLIST_FILE = "blacklist.json"
 try:
@@ -28,6 +51,10 @@ def save_blacklist():
     with open(BLACKLIST_FILE, "w") as f:
         json.dump(list(blacklist), f)
 
+# دالة اختيار بروكسي عشوائي
+def get_random_proxy():
+    return {"http": random.choice(proxies), "https": random.choice(proxies)}
+
 # دالة البحث باستخدام Google Dork
 def google_dork_search(dork_query, num_results=5, max_pages=2):
     headers = {"User-Agent": random.choice(user_agents)}
@@ -38,7 +65,8 @@ def google_dork_search(dork_query, num_results=5, max_pages=2):
         search_url = f"https://www.google.com/search?q={dork_query}&num={num_results}&start={start}"
         
         try:
-            response = requests.get(search_url, headers=headers)
+            proxy = get_random_proxy()  # اختيار بروكسي عشوائي
+            response = requests.get(search_url, headers=headers, proxies=proxy, timeout=10)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, "html.parser")
                 for g in soup.find_all('div', class_='tF2Cxc'):
@@ -49,7 +77,7 @@ def google_dork_search(dork_query, num_results=5, max_pages=2):
                         save_blacklist()
                         results.add(f"{title} - {link}")
             elif response.status_code == 429:
-                time.sleep(30)  # الانتظار قبل إعادة المحاولة
+                time.sleep(5)  # الانتظار قبل إعادة المحاولة
                 continue
             else:
                 return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
