@@ -89,7 +89,7 @@ def google_dork_search(dork_query, num_results=5, max_pages=2):
     return list(results)
 
 # رابط الفيديو من قناة التليجرام
-VIDEO_URL = "https://t.me/fi_9b/336"  # استبدل برابط الفيديو الخاص بك
+VIDEO_URL = "https://t.me/reeetere/15"  # استبدل برابط الفيديو الخاص بك
 
 # أزرار اختيار نوع المنتج
 @bot.message_handler(commands=['start', 'product'])
