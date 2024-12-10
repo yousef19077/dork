@@ -6,7 +6,7 @@ import json
 import time
 
 # إعداد البوت
-BOT_TOKEN = "7303620071:AAFI15Tkv-1pWRkPSLo1K_d7BXK2rMXSPwo"  # استبدل بالتوكن الخاص بك
+BOT_TOKEN = "7725003415:AAGrEIEZM10jQ0cLN7-EUptht4u8sEMHnTE"  # استبدل بالتوكن الخاص بك
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # قائمة User-Agent
