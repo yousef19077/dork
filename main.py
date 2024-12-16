@@ -1,175 +1,135 @@
-import requests
-from bs4 import BeautifulSoup
 import telebot
-import random
-import json
-import time
+import requests
+import time  # لإضافة التأخير بين الرسائل
+from random import choice  # لاختيار صورة عشوائية
+import json  # للعمل مع ملفات JSON
 
-# إعداد البوت
-BOT_TOKEN = "7725003415:AAGrEIEZM10jQ0cLN7-EUptht4u8sEMHnTE"  # استبدل بالتوكن الخاص بك
+# ضع توكن البوت الخاص بك هنا
+BOT_TOKEN = "7983611945:AAH8BA42GyvwQ__9ePR8v6T-KXlKRm6Dofg"
+CHANNEL_ID = -1002380061998  # ضع هنا معرف القناة بصيغة ID (مع الرقم السالب)
+SENT_CARDS_FILE = "sent_cards.json"  # اسم ملف الفيز المنشورة
+
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# قائمة User-Agent
-user_agents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:35.0) Gecko/20100101 Firefox/35.0"
+# قائمة روابط الصور (20 صورة)
+images = [
+    "https://t.me/reeetere/37",
+    "https://t.me/reeetere/38",
+    "https://t.me/reeetere/39",
+    "https://t.me/reeetere/40",
+    "https://t.me/reeetere/41",
+    "https://t.me/reeetere/42",
+    "https://t.me/reeetere/43",
+    "https://t.me/reeetere/44",
+    "https://t.me/reeetere/45",
+    "https://t.me/reeetere/46",
+    "https://t.me/reeetere/47",
+    "https://t.me/reeetere/48",
+    "https://t.me/reeetere/49",
+    "https://t.me/reeetere/50",
+    "https://t.me/reeetere/51",
+    "https://t.me/reeetere/52",
+    "https://t.me/reeetere/53",
+    "https://t.me/reeetere/54",
+    "https://t.me/reeetere/55",
+    "https://t.me/reeetere/56",
 ]
 
-# قائمة البروكسيات
-proxies = [
-    "104.167.27.85:3128",
-    "156.228.81.35:3128",
-    "156.240.99.34:3128",
-    "104.207.32.32:3128",
-    "156.233.87.19:3128",
-    "156.228.174.146:3128",
-    "104.207.52.183:3128",
-    "104.207.35.176:3128",
-    "156.228.105.144:3128",
-    "104.207.50.156:3128",
-    "156.228.182.209:3128",
-    "156.253.176.100:3128",
-    "104.207.58.29:3128",
-    "154.94.12.229:3128",
-    "104.167.31.238:3128",
-    "156.228.88.168:3128",
-    "104.207.56.158:3128",
-    "156.228.102.72:3128",
-    "156.228.98.144:3128"
-]
-
-# تحميل أو إنشاء القائمة السوداء
-BLACKLIST_FILE = "blacklist.json"
-try:
-    with open(BLACKLIST_FILE, "r") as f:
-        blacklist = set(json.load(f))
-except (FileNotFoundError, json.JSONDecodeError):
-    blacklist = set()
-
-def save_blacklist():
-    with open(BLACKLIST_FILE, "w") as f:
-        json.dump(list(blacklist), f)
-
-# دالة اختيار بروكسي عشوائي
-def get_random_proxy():
-    return {"http": random.choice(proxies), "https": random.choice(proxies)}
-
-# دالة البحث باستخدام Google Dork
-def google_dork_search(dork_query, num_results=5, max_pages=2):
-    headers = {"User-Agent": random.choice(user_agents)}
-    results = set()
-
-    for page in range(max_pages):
-        start = page * num_results
-        search_url = f"https://www.google.com/search?q={dork_query}&num={num_results}&start={start}"
-        
-        try:
-            proxy = get_random_proxy()  # اختيار بروكسي عشوائي
-            response = requests.get(search_url, headers=headers, proxies=proxy, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                for g in soup.find_all('div', class_='tF2Cxc'):
-                    title = g.find('h3').text
-                    link = g.find('a')['href']
-                    if link not in blacklist:
-                        blacklist.add(link)
-                        save_blacklist()
-                        results.add(f"{title} - {link}")
-            elif response.status_code == 429:
-                time.sleep(5)  # الانتظار قبل إعادة المحاولة
-                continue
-            else:
-                return [f"فشل في البحث. رمز الحالة: {response.status_code}"]
-        except Exception as e:
-            return [f"حدث خطأ أثناء البحث: {str(e)}"]
-
-        time.sleep(5)  # الانتظار بين الطلبات
-
-    return list(results)
-
-# رابط الفيديو من قناة التليجرام
-VIDEO_URL = "https://t.me/reeetere/15"  # استبدل برابط الفيديو الخاص بك
-
-# أزرار اختيار نوع المنتج
-@bot.message_handler(commands=['start', 'product'])
-def product_menu(message):
-    # إرسال الفيديو أولاً فقط في البداية
-    bot.send_video(message.chat.id, VIDEO_URL)
-    
-    # إرسال الأزرار بعد الفيديو
-    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
-    products = [
-        "Electronics", "Clothing", "Books", "Toys", "Furniture", 
-        "Groceries", "Health", "Beauty", "Sports", "Automotive"
-    ]
-    buttons = [telebot.types.InlineKeyboardButton(product, callback_data=f"product:{product}") for product in products]
-    markup.add(*buttons)
-    bot.send_message(message.chat.id, "اختر نوع المنتج:", reply_markup=markup)
-
-# معالجة اختيار المنتج
-@bot.callback_query_handler(func=lambda call: call.data.startswith("product:"))
-def select_product(call):
-    product = call.data.split(":")[1]
-    
-    # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    
-    bot.send_message(call.message.chat.id, f"تم اختيار المنتج: {product}\nالرجاء اختيار بوابة الدفع:")
-    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
-    gateways = [
-        "PayPal", "Stripe", "Braintree", "Square", "Authorize.Net", 
-        "2Checkout", "Adyen", "Amazon Pay", "Google Pay", "Apple Pay", 
-        "Klarna", "Skrill", "WePay", "Worldpay", "BlueSnap"
-    ]
-    buttons = [telebot.types.InlineKeyboardButton(gateway, callback_data=f"gateway:{product}:{gateway}") for gateway in gateways]
-    markup.add(*buttons)
-    bot.send_message(call.message.chat.id, "اختر بوابة الدفع:", reply_markup=markup)
-
-# معالجة اختيار بوابة الدفع
-@bot.callback_query_handler(func=lambda call: call.data.startswith("gateway:"))
-def select_gateway(call):
-    _, product, gateway = call.data.split(":")
-    
-    # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    
-    bot.send_message(call.message.chat.id, f"تم اختيار بوابة الدفع: {gateway}\nالرجاء اختيار نوع العملة:")
-    markup = telebot.types.InlineKeyboardMarkup(row_width=3)
-    currencies = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CNY", "INR"]
-    buttons = [telebot.types.InlineKeyboardButton(currency, callback_data=f"currency:{product}:{gateway}:{currency}") for currency in currencies]
-    markup.add(*buttons)
-    bot.send_message(call.message.chat.id, "اختر العملة:", reply_markup=markup)
-
-# معالجة اختيار العملة
-@bot.callback_query_handler(func=lambda call: call.data.startswith("currency:"))
-def select_currency(call):
-    _, product, gateway, currency = call.data.split(":")
-    
-    # إزالة الأزرار السابقة
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    
-    bot.send_message(call.message.chat.id, f"تم اختيار العملة: {currency}\nالرجاء إدخال السعر:")
-    bot.register_next_step_handler(call.message, process_price, product, gateway, currency)
-
-# معالجة إدخال السعر
-def process_price(message, product, gateway, currency):
+# قائمة لتتبع الفيز المرسلة
+def load_sent_cards():
     try:
-        price = float(message.text)
-        dork_query = f'"{product}" "{gateway}" "{currency}" "{price}" "add to cart"'
-        bot.send_message(message.chat.id, f"جاري البحث باستخدام الدورك:\n{dork_query}")
-        # البحث بالدورك
-        results = google_dork_search(dork_query)
-        if results:
-            for result in results:
-                bot.send_message(message.chat.id, result)
-        else:
-            bot.send_message(message.chat.id, "لم يتم العثور على نتائج.")
-        bot.send_message(message.chat.id, "تم البحث بنجاح.")
-    except ValueError:
-        bot.send_message(message.chat.id, "الرجاء إدخال مبلغ صالح. مثال: 100.50")
-        bot.register_next_step_handler(message, process_price, product, gateway, currency)
+        with open(SENT_CARDS_FILE, "r") as file:
+            data = file.read().strip()
+            return set(json.loads(data)) if data else set()  # التحقق إذا كان الملف فارغًا
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set()
+
+def save_sent_cards(cards):
+    with open(SENT_CARDS_FILE, "w") as file:
+        json.dump(list(cards), file)
+
+# API لمعالجة معلومات البطاقات
+def info(card):
+    while True:
+        response = requests.get(f'https://bins.antipublic.cc/bins/{card[:6]}')
+        
+        if 'not found' in response.text:
+            return ("------", "------", "------", "------", "------", "------")
+        elif 'Cloudflare' in response.text:
+            break
+        elif response.status_code == 200:
+            break
+
+    if response.status_code == 200:
+        data = ['brand', 'type', 'level', 'bank', 'country_name', 'country_flag']
+        result = []
+        
+        for field in data:
+            try:
+                result.append(response.json()[field])
+            except:
+                result.append("------")  
+    
+        return tuple(result)
+    else:
+        return ("------", "------", "------", "------", "------", "------")
+
+# قراءة ومعالجة ملف الفيز
+def process_file(file_name):
+    sent_cards = load_sent_cards()  # تحميل الفيز المنشورة من الملف
+    try:
+        with open(file_name, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                if "|" in line:  # يفترض أن الفيز تكون على هذا الشكل
+                    card = line.strip()
+                    
+                    # تحقق إذا كانت البطاقة قد أُرسلت من قبل
+                    if card in sent_cards:
+                        continue
+                    
+                    # الحصول على معلومات البطاقة
+                    brand, card_type, level, bank, country, flag = info(card)
+                    
+                    # صياغة الرسالة
+                    msg = f"""
+ᴄᴄ⇾{card}
+• sᴛᴀᴛᴜs⇾APPROVED ✅
+━━━━━━• ɪɴꜰᴏ •━━━━━━
+• ʙɪɴ⇾{card[:6]} | {brand} | {card_type}
+• ᴄᴏᴜɴᴛʀʏ⇾{country}{flag}
+• ʙᴀɴᴋ⇾{bank}
+"""
+
+                    # اختيار صورة عشوائية
+                    image_url = choice(images)
+
+                    # إعداد الزرَّين
+                    markup = telebot.types.InlineKeyboardMarkup()
+                    button1 = telebot.types.InlineKeyboardButton("Admin", url="https://t.me/wwpww6")
+                    button2 = telebot.types.InlineKeyboardButton("Hello World ", url="https://t.me/c/2380061998/513")
+                    markup.add(button1, button2)
+                           # إرسال الرسالة إلى القناة
+                    bot.send_photo(CHANNEL_ID, image_url, caption=msg, reply_markup=markup)
+                    
+                    # إضافة البطاقة إلى القائمة المرسلة
+                    sent_cards.add(card)
+                    save_sent_cards(sent_cards)  # حفظ الفيز المرسلة
+                    
+                    # تأخير لتجنب الحظر
+                    time.sleep(5)
+                    
+            print("تمت معالجة الملف وإرسال المعلومات إلى القناة.")
+    except FileNotFoundError:
+        print(f"الملف {file_name} غير موجود في المجلد.")
+    except Exception as e:
+        print(f"حدث خطأ أثناء معالجة الملف: {e}")
+
+# أمر البوت لبدء المعالجة
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    bot.reply_to(message, "مرحبًا! يتم الآن معالجة الملف...")
+    process_file("cards.txt")  # استبدل "cards.txt" باسم ملفك
 
 # تشغيل البوت
-print("Bot is running...")
 bot.polling()
