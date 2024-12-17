@@ -85,6 +85,21 @@ def send_card(card):
     save_sent_cards(sent_cards)
     time.sleep(5)
 
+# استيراد الفيز من ملف نصي
+def process_file(file_name):
+    try:
+        with open(file_name, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                if "|" in line:  # يفترض أن الفيز تكون على هذا الشكل
+                    card = line.strip()
+                    send_card(card)
+            print("تمت معالجة الملف وإرسال الفيز.")
+    except FileNotFoundError:
+        print(f"الملف {file_name} غير موجود.")
+    except Exception as e:
+        print(f"حدث خطأ أثناء معالجة الملف: {e}")
+
 # الانضمام إلى قناة خاصة والحصول على ID
 @bot.message_handler(commands=['join_private'])
 def join_private(message):
@@ -114,7 +129,18 @@ def import_from_source(source_id):
 # أوامر البوت
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, "مرحبًا! استخدم الأوامر للاستيراد:\n/import_from_id [ID]\n/import_from_link [رابط]\n/join_private [رابط دعوة]")
+    bot.reply_to(message, "مرحبًا! استخدم الأوامر للاستيراد:\n/import_from_id [ID]\n/import_from_link [رابط]\n/join_private [رابط دعوة]\n/import_file [اسم الملف]")
+
+@bot.message_handler(commands=['import_file'])
+def import_file(message):
+    try:
+        file_name = message.text.split()[1]
+        bot.reply_to(message, f"✅ جارٍ معالجة الملف: {file_name}")
+        process_file(file_name)
+    except IndexError:
+        bot.reply_to(message, "❌ يجب إدخال اسم الملف بعد الأمر.\nمثال: `/import_file cards.txt`")
+    except Exception as e:
+        bot.reply_to(message, f"❌ حدث خطأ: {e}")
 
 @bot.message_handler(commands=['import_from_id'])
 def import_from_id(message):
