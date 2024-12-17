@@ -3,6 +3,7 @@ import requests
 import time
 from random import choice
 import json
+import threading
 
 # توكن البوت
 BOT_TOKEN = "7983611945:AAH8BA42GyvwQ__9ePR8v6T-KXlKRm6Dofg"
@@ -35,6 +36,9 @@ def save_sent_cards(cards):
     with open(SENT_CARDS_FILE, "w") as file:
         json.dump(list(cards), file)
 
+# تحميل الفيز المرسلة عند بدء التشغيل
+sent_cards = load_sent_cards()
+
 # جلب معلومات BIN
 def info(card):
     while True:
@@ -60,7 +64,7 @@ def info(card):
 
 # إرسال فيزا مع المعلومات
 def send_card(card):
-    sent_cards = load_sent_cards()
+    global sent_cards
     if card in sent_cards:
         return
     
@@ -100,36 +104,29 @@ def process_file(file_name):
     except Exception as e:
         print(f"حدث خطأ أثناء معالجة الملف: {e}")
 
-# الانضمام إلى قناة خاصة والحصول على ID
-@bot.message_handler(commands=['join_private'])
-def join_private(message):
-    try:
-        link = message.text.split()[1]
-        bot.join_chat(link)  # البوت ينضم باستخدام الرابط
-        chat_info = bot.get_chat(link)
-        bot.reply_to(message, f"✅ تم الاشتراك بنجاح.\nID المجموعة/القناة: `{chat_info.id}`")
-    except IndexError:
-        bot.reply_to(message, "❌ يجب إدخال رابط الدعوة بعد الأمر.\nمثال: `/join_private https://t.me/yourchannel`")
-    except Exception as e:
-        bot.reply_to(message, f"❌ حدث خطأ: {e}")
+# أمر إيقاف البوت
+stop_bot = False
 
-# استيراد الفيز
-def import_from_source(source_id):
-    try:
-        updates = bot.get_chat_history(source_id, limit=50)
-        for message in updates.messages:
-            if message.text and "|" in message.text:
-                cards = [line.strip() for line in message.text.splitlines() if "|" in line]
-                for card in cards:
-                    send_card(card)
-        print("تم استيراد الفيز بنجاح.")
-    except Exception as e:
-        print(f"خطأ أثناء الاستيراد: {e}")
+@bot.message_handler(commands=['stop'])
+def stop_command(message):
+    global stop_bot
+    if message.chat.type == "private" and message.chat.id == CHANNEL_ID:  # تأكد أن الأمر فقط من المدير
+        bot.reply_to(message, "✅ تم إيقاف البوت.")
+        stop_bot = True
+    else:
+        bot.reply_to(message, "❌ لا تملك صلاحية إيقاف البوت.")
+
+# إعادة تشغيل البوت
+def restart_bot():
+    global stop_bot
+    while not stop_bot:
+        time.sleep(1)
+    exit()
 
 # أوامر البوت
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, "مرحبًا! استخدم الأوامر للاستيراد:\n/import_from_id [ID]\n/import_from_link [رابط]\n/join_private [رابط دعوة]\n/import_file [اسم الملف]")
+    bot.reply_to(message, "مرحبًا! استخدم الأوامر التالية:\n/import_file [اسم الملف]\n/stop لإيقاف البوت.")
 
 @bot.message_handler(commands=['import_file'])
 def import_file(message):
@@ -142,24 +139,8 @@ def import_file(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ: {e}")
 
-@bot.message_handler(commands=['import_from_id'])
-def import_from_id(message):
-    try:
-        source_id = int(message.text.split()[1])
-        bot.reply_to(message, f"جارٍ الاستيراد من المصدر ID: {source_id}")
-        import_from_source(source_id)
-    except (IndexError, ValueError):
-        bot.reply_to(message, "❌ يجب إدخال معرف ID صحيح بعد الأمر.")
+# تشغيل البوت في سلسلة منفصلة
+threading.Thread(target=restart_bot).start()
 
-@bot.message_handler(commands=['import_from_link'])
-def import_from_link(message):
-    try:
-        link = message.text.split()[1]
-        source_id = bot.get_chat(link).id
-        bot.reply_to(message, f"جارٍ الاستيراد من الرابط: {link}")
-        import_from_source(source_id)
-    except (IndexError, Exception) as e:
-        bot.reply_to(message, f"❌ حدث خطأ: {e}")
-
-# تشغيل البوت
+# بدء البوت
 bot.polling()
