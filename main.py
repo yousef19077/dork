@@ -104,6 +104,27 @@ def process_file(file_name):
     except Exception as e:
         print(f"حدث خطأ أثناء معالجة الملف: {e}")
 
+# استيراد الفيز من قناة/مجموعة
+def process_group(group_id):
+    try:
+        updates = bot.get_chat_history(group_id, limit=100)
+        for message in updates:
+            if message.text and "|" in message.text:
+                card = message.text.strip()
+                send_card(card)
+        print("تم استيراد الفيز من القناة/المجموعة.")
+    except Exception as e:
+        print(f"حدث خطأ أثناء استيراد الفيز: {e}")
+
+# استخراج ID المجموعة/القناة
+def get_group_id(group_link):
+    try:
+        chat = bot.get_chat(group_link)
+        return chat.id
+    except Exception as e:
+        print(f"حدث خطأ أثناء استخراج ID المجموعة: {e}")
+        return None
+
 # أمر إيقاف البوت
 stop_bot = False
 
@@ -116,17 +137,10 @@ def stop_command(message):
     else:
         bot.reply_to(message, "❌ لا تملك صلاحية إيقاف البوت.")
 
-# إعادة تشغيل البوت
-def restart_bot():
-    global stop_bot
-    while not stop_bot:
-        time.sleep(1)
-    exit()
-
 # أوامر البوت
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, "مرحبًا! استخدم الأوامر التالية:\n/import_file [اسم الملف]\n/stop لإيقاف البوت.")
+    bot.reply_to(message, "مرحبًا! استخدم الأوامر التالية:\n/import_file [اسم الملف]\n/import_group [ID المجموعة]\n/get_id [رابط المجموعة]\n/stop لإيقاف البوت.")
 
 @bot.message_handler(commands=['import_file'])
 def import_file(message):
@@ -139,8 +153,30 @@ def import_file(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ: {e}")
 
-# تشغيل البوت في سلسلة منفصلة
-threading.Thread(target=restart_bot).start()
+@bot.message_handler(commands=['import_group'])
+def import_group(message):
+    try:
+        group_id = int(message.text.split()[1])
+        bot.reply_to(message, "✅ جارٍ استيراد الفيز من المجموعة...")
+        process_group(group_id)
+    except IndexError:
+        bot.reply_to(message, "❌ يجب إدخال ID المجموعة بعد الأمر.")
+    except Exception as e:
+        bot.reply_to(message, f"❌ حدث خطأ: {e}")
 
-# بدء البوت
+@bot.message_handler(commands=['get_id'])
+def get_id(message):
+    try:
+        group_link = message.text.split()[1]
+        group_id = get_group_id(group_link)
+        if group_id:
+            bot.reply_to(message, f"✅ ID المجموعة/القناة: {group_id}")
+        else:
+            bot.reply_to(message, "❌ لم أتمكن من استخراج ID المجموعة.")
+    except IndexError:
+        bot.reply_to(message, "❌ يجب إدخال رابط المجموعة بعد الأمر.")
+    except Exception as e:
+        bot.reply_to(message, f"❌ حدث خطأ: {e}")
+
+# تشغيل البوت
 bot.polling()
